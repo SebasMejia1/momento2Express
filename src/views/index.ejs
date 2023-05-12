@@ -25,11 +25,11 @@
           <strong
             class="<%= logeoInvalido ? 'd-block' : 'd-none'%> text-danger"
           >
-            Usuario y/o contraseña invalido
+            El usuario y/o contraseña son invalidos
           </strong>
         </div>
         <div class="card-body">
-          <form action="/" class="text-center mx-5">
+          <form action="/login" class="text-center mx-5" method="post">
             <div class="form-group">
               <label for="username">Username</label>
               <input type="text" class="form-control" name="username" required />

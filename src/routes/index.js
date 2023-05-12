@@ -2,103 +2,109 @@ const express = require("express");
 const router = express.Router();
 const { User, Car, Rent } = require("../models/rentaCar");
 let usuarioExists = false;
+let logeoInvalido = false;
 let carroExists = false;
 let rentExists = false;
-let logeoInvalido = false;
 
 router.get("/", (req, res) => {
-  res.render("index", { usuarioExists });
+  res.render("index", { logeoInvalido });
 });
 
 router.get("/register", (req, res) => {
-  res.render("register");
+  res.render("register", { usuarioExists });
 });
 
 router.get("/cars", (req, res) => {
-  res.render("cars");
+  res.render("cars", { carroExists });
 });
 
 router.get("/rents", (req, res) => {
-  res.render("rents");
+  res.render("rents", { rentExists });
 });
 
 router.post("/addUser", async (req, res, next) => {
-  let { username } = req.params;
-  const existingUser = await User.find({ username: username });
-  if (existingUser) {
+  const existingUser = await User.find({ username: req.body.username });
+  if (existingUser.length > 0) {
+    console.log(existingUser);
+    // console.log("El usuario existe en la base de datos");
     usuarioExists = true;
-    res.render("/", { usuarioExists });
-    return;
+    res.redirect("/");
+  } else {
+    console.log(existingUser);
+    console.log(req.body.username);
+    // console.log("El usuario no existe en la base de datos");
+    usuarioExists = false;
+    const usuario = new User(req.body);
+    await usuario.save();
+    res.redirect("/");
   }
-  const usuario = new User(req.body);
-  await usuario.save();
-  res.render("/", { usuarioExists });
 });
 
 router.post("/login", async (req, res) => {
-  let { username, password } = req.params;
-  const user = await User.find({ username: username });
-  if (!user) {
-    logeoInvalido = true;
-    res.render("/", { logeoInvalido });
-    return;
+  let { username, password } = req.body;
+  const user = await User.findOne({ username: username });
+  if (user) {
+    console.log(user);
+    console.log(username, password);
+    console.log("El usuario existe");
+    if (user.password == password) {
+      logeoInvalido = false;
+      res.redirect("cars");
+    } else {
+      console.log(user);
+      console.log(user.password);
+      logeoInvalido = true;
+      console.log("La contraseña es incorrecta");
+      res.redirect("/");
+    }
+  } else {
+    console.log(user);
+    console.log(username, password);
+    console.log("El usuario no existe debe registrarse");
   }
-  if (user.password !== password) {
-    logeoInvalido = true;
-    return;
-  }
-  logeoInvalido = false;
-  res.render("/cars", { logeoInvalido });
 });
 
 router.post("/NewCars", async (req, res) => {
-  let { plateNumber, brand, state } = req.params;
-  const existingCar = await Car.find({ plateNumber: plateNumber });
+  let { plateNumber, brand, state } = req.body;
+  const existingCar = await Car.findOne({ platenumber: plateNumber });
   if (existingCar) {
-    res.render("/", { existingCar });
-    return;
+    carroExists = true;
+    res.redirect("/cars");
+  } else {
+    // Crear un nuevo carro
+    const car = new Car({
+      platenumber: plateNumber,
+      brand: brand,
+      state: state,
+    });
+    carroExists = false;
+    await car.save();
+    res.redirect("/cars");
   }
-
-  // Crear un nuevo carro
-  const car = new Car({
-    plateNumber: plateNumber,
-    brand: brand,
-    state: state,
-  });
-  await car.save();
-  res.render("/cars");
 });
 
 router.post("/NewRent", async (req, res) => {
-  let { rentnumber, username, platenumber } = req.params;
+  let { rentnumber, username, platenumber } = req.body;
   // Buscar si el usuario existe en la base de datos
-  const user = await User.find({ username: username });
-  if (!user) {
-    usuarioExists = false; // EL USUARIO NO EXISTE VALIDACION EN RENTA CONTRARIO AL DE LOGIN
-  }
-
-  // Buscar si el carro existe en la base de datos
+  const user = await User.findOne({ username: username });
   const car = await Car.findOne({ plateNumber: platenumber });
-  if (!car) {
+  const existingRent = await Rent.findOne({ rentNumber: rentnumber });
+  if (!user || !car || existingRent) {
+    usuarioExists = false; // EL USUARIO NO EXISTE VALIDACION EN RENTA CONTRARIO AL DE LOGIN
     carroExists = false; // EL CARRO NO EXISTE VALIDACION EN RENTA
+    rentExists = true; // LA RENTA NO EXISTE VALIDACION EN RENTA
+    res.redirect("/rents", { carroExists, rentExists });
+  } else {
+    // Crear una nueva renta
+    const rent = new Rent({
+      rentNumber: rentnumber,
+      username: username,
+      platenumber: platenumber,
+    });
+    rentExists = false;
+    await rent.save();
+    res.redirect("/rents");
   }
-
-  // Buscar si el rentNumber ya existe en la base de datos
-  const existingRent = await Rent.find({
-    rentNumber: rentnumber,
-  });
-  if (existingRent) {
-    rentExists = true; // LA RENTA EXISTE VALIDACION EN RENT
-  }
-
-  // Crear una nueva renta
-  const rent = new Rent({
-    rentNumber: rentnumber,
-    username: username,
-    platenumber: platenumber,
-  });
-  await rent.save();
-  res.render("/rents");
 });
 
 module.exports = router;
