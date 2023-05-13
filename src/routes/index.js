@@ -5,9 +5,11 @@ let usuarioExists = false;
 let logeoInvalido = false;
 let carroExists = false;
 let rentExists = false;
+let usuarioExistsOnRent = true;
+let carroExistsOnRent = true;
 
 router.get("/", (req, res) => {
-  res.render("index", { logeoInvalido });
+  res.render("index", { logeoInvalido, usuarioExists });
 });
 
 router.get("/register", (req, res) => {
@@ -19,7 +21,7 @@ router.get("/cars", (req, res) => {
 });
 
 router.get("/rents", (req, res) => {
-  res.render("rents", { rentExists });
+  res.render("rents", { rentExists, carroExistsOnRent, usuarioExistsOnRent });
 });
 
 router.post("/addUser", async (req, res, next) => {
@@ -65,7 +67,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/NewCars", async (req, res) => {
-  let { plateNumber, brand, state } = req.body;
+  let { plateNumber, brand } = req.body;
   const existingCar = await Car.findOne({ platenumber: plateNumber });
   if (existingCar) {
     carroExists = true;
@@ -75,7 +77,6 @@ router.post("/NewCars", async (req, res) => {
     const car = new Car({
       platenumber: plateNumber,
       brand: brand,
-      state: state,
     });
     carroExists = false;
     await car.save();
@@ -84,24 +85,27 @@ router.post("/NewCars", async (req, res) => {
 });
 
 router.post("/NewRent", async (req, res) => {
-  let { rentnumber, username, platenumber } = req.body;
+  let { rentNumber, username, platenumber } = req.body;
   // Buscar si el usuario existe en la base de datos
   const user = await User.findOne({ username: username });
-  const car = await Car.findOne({ plateNumber: platenumber });
-  const existingRent = await Rent.findOne({ rentNumber: rentnumber });
+  const car = await Car.findOne({ platenumber: platenumber });
+  const existingRent = await Rent.findOne({ rentnumber: rentNumber });
   if (!user || !car || existingRent) {
-    usuarioExists = false; // EL USUARIO NO EXISTE VALIDACION EN RENTA CONTRARIO AL DE LOGIN
-    carroExists = false; // EL CARRO NO EXISTE VALIDACION EN RENTA
+    usuarioExistsOnRent = false; // EL USUARIO NO EXISTE VALIDACION EN RENTA CONTRARIO AL DE LOGIN
+    carroExistsOnRent = false; // EL CARRO NO EXISTE VALIDACION EN RENTA
     rentExists = true; // LA RENTA NO EXISTE VALIDACION EN RENTA
-    res.redirect("/rents", { carroExists, rentExists });
+    res.redirect("/rents");
   } else {
     // Crear una nueva renta
     const rent = new Rent({
-      rentNumber: rentnumber,
+      rentnumber: rentNumber,
+
       username: username,
       platenumber: platenumber,
     });
     rentExists = false;
+    usuarioExistsOnRent = true;
+    carroExistsOnRent = true;
     await rent.save();
     res.redirect("/rents");
   }

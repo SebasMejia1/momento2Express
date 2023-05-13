@@ -10,7 +10,7 @@ const userSchema = new Schema({
 const carSchema = new Schema({
   platenumber: { type: String },
   brand: { type: String },
-  state: { type: String },
+  state: { type: Boolean, default: true },
 });
 
 const rentSchema = new Schema({
